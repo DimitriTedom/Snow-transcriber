@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "snow-transcriber": {
+      "command": "node",
+      "args": ["mcp-server/dist/index.js"],
+      "env": {
+        "SNOW_ENGINE_URL": "http://localhost:8000"
+      }
+    }
+  }
+}

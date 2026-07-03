@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
-import "./../styles/globals.css";
+import "./globals.css";
 
 import { AmbientBackground } from "@/components/ambient-background";
+import { CssBootstrap } from "@/components/css-bootstrap";
 import { ThemeProvider } from "@/components/theme-provider";
 import { SiteHeader } from "@/components/site-header";
 import { Toaster } from "@/components/ui/sonner";
@@ -30,7 +31,11 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning className="dark">
+      <head>
+        <link rel="stylesheet" href="/_next/static/css/app/layout.css" precedence="high" />
+      </head>
       <body className={`${inter.variable} ${jetbrainsMono.variable} font-sans`}>
+        <CssBootstrap />
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
           <AmbientBackground />
           <SiteHeader />

@@ -24,7 +24,10 @@
     "engine:up": "docker compose up engine --build -d",
     "engine:down": "docker compose stop engine",
     "engine:logs": "docker compose logs -f engine",
-    "dev:all": "docker compose up engine --build -d && next dev"
+    "dev:all": "docker compose up engine --build -d && next dev",
+    "mcp:install": "npm install --prefix mcp-server",
+    "mcp:build": "npm run build --prefix mcp-server",
+    "mcp:dev": "npm run dev --prefix mcp-server"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.1.1",

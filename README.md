@@ -96,6 +96,21 @@ Snow Transcriber's Docker engine uses **faster-whisper + CTranslate2**, which in
 | **NVIDIA + CUDA** | Set `WHISPER_DEVICE=cuda` and pass GPU into Docker (advanced). |
 | **AMD on Windows** | Native DirectML is possible but not wired yet; Docker won't use your AMD GPU today. |
 
+## MCP server (for AI agents)
+
+Snow Transcriber includes an MCP server so **Cursor, Antigravity, Claude Desktop, Grok**, and other MCP clients can transcribe audio and get exact scene counts programmatically.
+
+```bash
+npm run mcp:install
+npm run mcp:build
+```
+
+**Cursor:** `.cursor/mcp.json` is preconfigured in this repo. Enable MCP in Cursor settings, ensure `npm run engine:up` is running, then ask your agent to use `snow_transcribe_audio`.
+
+**Tools:** `snow_engine_health`, `snow_transcribe_audio`, `snow_list_scenes`, `snow_format_veo3_blocks`, `snow_estimate_scene_count`, `snow_save_export`
+
+See [mcp-server/README.md](mcp-server/README.md) for Antigravity / Claude Desktop setup.
+
 ## Useful commands
 
 ```bash
@@ -103,6 +118,7 @@ npm run engine:up      # build + start engine
 npm run engine:down    # stop engine
 npm run engine:logs    # tail engine logs
 npm run dev            # Next.js dev server
+npm run mcp:build      # build MCP server for agents
 ```
 
 ## Production docker compose
