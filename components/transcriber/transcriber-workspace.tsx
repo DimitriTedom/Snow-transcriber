@@ -1,14 +1,31 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Copy, Download, Loader2, Upload } from "lucide-react";
+import {
+  Clock3,
+  Copy,
+  Download,
+  Film,
+  Languages,
+  Loader2,
+  Pause,
+  Ruler,
+  Sparkles,
+  Timer,
+} from "lucide-react";
 import { toast } from "sonner";
 
+import { AudioDropzone } from "@/components/transcriber/audio-dropzone";
+import { EngineStatus } from "@/components/transcriber/engine-status";
+import { ProcessingSkeleton } from "@/components/transcriber/processing-skeleton";
+import { SceneTimeline } from "@/components/transcriber/scene-timeline";
+import { WorkflowSteps } from "@/components/transcriber/workflow-steps";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 import type { TranscriberResult, TranscriberSettings } from "@/lib/transcriber/types";
 
 const defaultSettings: TranscriberSettings = {
@@ -19,6 +36,8 @@ const defaultSettings: TranscriberSettings = {
   language: "",
   sceneType: "?",
 };
+
+const sceneTypes = ["?", "A", "B", "C", "D", "E", "F", "G"];
 
 function formatDuration(seconds: number) {
   const minutes = Math.floor(seconds / 60);
@@ -46,12 +65,12 @@ export function TranscriberWorkspace() {
   const [settings, setSettings] = useState<TranscriberSettings>(defaultSettings);
   const [result, setResult] = useState<TranscriberResult | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [activeSceneId, setActiveSceneId] = useState<number | undefined>();
 
-  const audioLabel = useMemo(() => {
-    if (!audioFile) return "No file selected";
-    const sizeMb = (audioFile.size / (1024 * 1024)).toFixed(1);
-    return `${audioFile.name} (${sizeMb} MB)`;
-  }, [audioFile]);
+  const estimatedScenes = useMemo(() => {
+    if (!audioFile || settings.mode !== "fixed") return null;
+    return null;
+  }, [audioFile, settings.mode]);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -63,6 +82,7 @@ export function TranscriberWorkspace() {
 
     setIsProcessing(true);
     setResult(null);
+    setActiveSceneId(undefined);
 
     try {
       const formData = new FormData();
@@ -87,7 +107,8 @@ export function TranscriberWorkspace() {
       }
 
       setResult(payload as TranscriberResult);
-      toast.success(`Done — ${payload.sceneCount} scenes generated.`);
+      setActiveSceneId(1);
+      toast.success(`${payload.sceneCount} scenes ready for your Veo3 agent.`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Transcription failed.");
     } finally {
@@ -96,225 +117,259 @@ export function TranscriberWorkspace() {
   }
 
   return (
-    <div className="space-y-6">
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="grid gap-6 lg:grid-cols-2">
-          <Card>
-            <CardHeader>
-              <CardTitle>Voiceover</CardTitle>
-              <CardDescription>
-                Upload the audio generated from your script. MP3, WAV, M4A, OGG, FLAC, WebM.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <label className="flex cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed bg-muted/30 px-6 py-10 text-center transition hover:bg-muted/50">
-                <Upload className="mb-3 h-8 w-8 text-muted-foreground" />
-                <span className="text-sm font-medium">Drop audio here or click to browse</span>
-                <span className="mt-1 text-xs text-muted-foreground">{audioLabel}</span>
-                <input
-                  type="file"
-                  accept="audio/*,video/webm"
-                  className="hidden"
-                  onChange={(event) => setAudioFile(event.target.files?.[0] ?? null)}
+    <div className="space-y-8">
+      <WorkflowSteps compact />
+
+      <form onSubmit={handleSubmit} className="grid gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">
+        <aside className="space-y-4 xl:sticky xl:top-24 xl:self-start">
+          <EngineStatus />
+
+          <div className="snow-panel space-y-5 p-5">
+            <div>
+              <h2 className="text-sm font-semibold">Scene engine</h2>
+              <p className="mt-1 text-xs text-muted-foreground">How cuts are calculated from your voiceover.</p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              {(["fixed", "pause"] as const).map((mode) => (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => setSettings((current) => ({ ...current, mode }))}
+                  className={cn(
+                    "cursor-pointer rounded-xl border px-3 py-3 text-left transition-colors duration-200",
+                    settings.mode === mode
+                      ? "border-primary/50 bg-primary/15"
+                      : "border-white/10 bg-secondary/40 hover:border-white/20",
+                  )}
+                >
+                  <div className="flex items-center gap-2 text-sm font-medium">
+                    {mode === "fixed" ? <Ruler className="h-4 w-4 text-accent" /> : <Pause className="h-4 w-4 text-accent" />}
+                    {mode === "fixed" ? "Fixed" : "Pauses"}
+                  </div>
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    {mode === "fixed" ? "Veo3 clip math" : "FoziScribe rhythm"}
+                  </p>
+                </button>
+              ))}
+            </div>
+
+            {settings.mode === "fixed" ? (
+              <div className="space-y-2">
+                <Label htmlFor="sceneDuration" className="flex items-center gap-1.5 text-xs uppercase tracking-wider text-muted-foreground">
+                  <Timer className="h-3.5 w-3.5" />
+                  Clip length (sec)
+                </Label>
+                <Input
+                  id="sceneDuration"
+                  type="number"
+                  min={1}
+                  step={0.5}
+                  value={settings.sceneDuration}
+                  onChange={(event) =>
+                    setSettings((current) => ({
+                      ...current,
+                      sceneDuration: Number(event.target.value),
+                    }))
+                  }
+                  className="font-mono"
                 />
-              </label>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Original Script</CardTitle>
-              <CardDescription>
-                Optional. Paste your source script so your agent keeps narrative context while
-                timestamps come from the real audio pacing.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Textarea
-                value={script}
-                onChange={(event) => setScript(event.target.value)}
-                placeholder="Paste your narration script here..."
-                className="min-h-[220px]"
-              />
-            </CardContent>
-          </Card>
-        </div>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Scene Settings</CardTitle>
-            <CardDescription>
-              Fixed mode splits every N seconds (best for Veo3 clip math). Pause mode follows
-              natural voiceover rhythm like FoziScribe.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            <div className="space-y-2">
-              <Label htmlFor="mode">Scene mode</Label>
-              <select
-                id="mode"
-                value={settings.mode}
-                onChange={(event) =>
-                  setSettings((current) => ({
-                    ...current,
-                    mode: event.target.value as TranscriberSettings["mode"],
-                  }))
-                }
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              >
-                <option value="fixed">Fixed duration (Veo3)</option>
-                <option value="pause">Natural pauses</option>
-              </select>
-            </div>
+              </div>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="pauseThreshold" className="text-xs uppercase tracking-wider text-muted-foreground">
+                    Pause threshold (sec)
+                  </Label>
+                  <Input
+                    id="pauseThreshold"
+                    type="number"
+                    min={0.1}
+                    step={0.1}
+                    value={settings.pauseThreshold}
+                    onChange={(event) =>
+                      setSettings((current) => ({
+                        ...current,
+                        pauseThreshold: Number(event.target.value),
+                      }))
+                    }
+                    className="font-mono"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="maxSceneDuration" className="text-xs uppercase tracking-wider text-muted-foreground">
+                    Max scene cap (0 = none)
+                  </Label>
+                  <Input
+                    id="maxSceneDuration"
+                    type="number"
+                    min={0}
+                    step={1}
+                    value={settings.maxSceneDuration}
+                    onChange={(event) =>
+                      setSettings((current) => ({
+                        ...current,
+                        maxSceneDuration: Number(event.target.value),
+                      }))
+                    }
+                    className="font-mono"
+                  />
+                </div>
+              </>
+            )}
 
             <div className="space-y-2">
-              <Label htmlFor="sceneDuration">Scene length (seconds)</Label>
-              <Input
-                id="sceneDuration"
-                type="number"
-                min={1}
-                step={0.5}
-                value={settings.sceneDuration}
-                disabled={settings.mode !== "fixed"}
-                onChange={(event) =>
-                  setSettings((current) => ({
-                    ...current,
-                    sceneDuration: Number(event.target.value),
-                  }))
-                }
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="pauseThreshold">Pause threshold (seconds)</Label>
-              <Input
-                id="pauseThreshold"
-                type="number"
-                min={0.1}
-                step={0.1}
-                value={settings.pauseThreshold}
-                disabled={settings.mode !== "pause"}
-                onChange={(event) =>
-                  setSettings((current) => ({
-                    ...current,
-                    pauseThreshold: Number(event.target.value),
-                  }))
-                }
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="maxSceneDuration">Max scene duration (pause mode)</Label>
-              <Input
-                id="maxSceneDuration"
-                type="number"
-                min={0}
-                step={1}
-                value={settings.maxSceneDuration}
-                disabled={settings.mode !== "pause"}
-                onChange={(event) =>
-                  setSettings((current) => ({
-                    ...current,
-                    maxSceneDuration: Number(event.target.value),
-                  }))
-                }
-              />
-              <p className="text-xs text-muted-foreground">0 = no cap. Use 6–8 for long monologues.</p>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="language">Language code (optional)</Label>
+              <Label htmlFor="language" className="flex items-center gap-1.5 text-xs uppercase tracking-wider text-muted-foreground">
+                <Languages className="h-3.5 w-3.5" />
+                Language (optional)
+              </Label>
               <Input
                 id="language"
-                placeholder="en"
+                placeholder="auto-detect"
                 value={settings.language}
                 onChange={(event) =>
                   setSettings((current) => ({ ...current, language: event.target.value }))
                 }
+                className="font-mono"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="sceneType">Scene type letter</Label>
-              <Input
-                id="sceneType"
-                maxLength={1}
-                value={settings.sceneType}
-                onChange={(event) =>
-                  setSettings((current) => ({ ...current, sceneType: event.target.value || "?" }))
-                }
-              />
-              <p className="text-xs text-muted-foreground">Placeholder for your Veo3 A–G scene types.</p>
+              <Label className="text-xs uppercase tracking-wider text-muted-foreground">Veo3 scene type</Label>
+              <div className="flex flex-wrap gap-1.5">
+                {sceneTypes.map((type) => (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => setSettings((current) => ({ ...current, sceneType: type }))}
+                    className={cn(
+                      "h-8 w-8 cursor-pointer rounded-lg border font-mono text-sm transition-colors duration-200",
+                      settings.sceneType === type
+                        ? "border-accent bg-accent/20 text-accent"
+                        : "border-white/10 bg-secondary/40 hover:border-white/20",
+                    )}
+                  >
+                    {type}
+                  </button>
+                ))}
+              </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </aside>
 
-        <div className="flex justify-end">
-          <Button type="submit" size="lg" disabled={isProcessing}>
-            {isProcessing ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Transcribing...
-              </>
-            ) : (
-              "Generate timestamped scenes"
-            )}
-          </Button>
+        <div className="space-y-6">
+          <div className="grid gap-6 lg:grid-cols-2">
+            <div className="snow-panel p-5">
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="text-sm font-semibold">Voiceover</h2>
+                <Badge variant="secondary">Required</Badge>
+              </div>
+              <AudioDropzone file={audioFile} onFileChange={setAudioFile} />
+            </div>
+
+            <div className="snow-panel p-5">
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="text-sm font-semibold">Source script</h2>
+                <Badge variant="outline">Optional</Badge>
+              </div>
+              <Textarea
+                value={script}
+                onChange={(event) => setScript(event.target.value)}
+                placeholder="Paste narration for agent context. Timestamps always come from the real audio pacing..."
+                className="min-h-[260px] resize-y border-white/10 bg-secondary/30 font-mono text-sm leading-relaxed"
+              />
+              <p className="mt-2 text-xs text-muted-foreground">
+                {script.trim() ? `${script.trim().split(/\s+/).length} words in script` : "Whisper aligns to audio, not this text (forced alignment coming in v2)."}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-muted-foreground">
+              {settings.mode === "fixed"
+                ? `Each scene ≈ ${settings.sceneDuration}s — ideal for Veo3 prompt batching.`
+                : "Cuts land on natural pauses in the voiceover."}
+              {estimatedScenes ? ` · ~${estimatedScenes} scenes est.` : null}
+            </p>
+            <Button
+              type="submit"
+              size="lg"
+              disabled={isProcessing || !audioFile}
+              className="cursor-pointer snow-glow min-w-[220px]"
+            >
+              {isProcessing ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Transcribing...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="mr-2 h-4 w-4" />
+                  Generate scenes
+                </>
+              )}
+            </Button>
+          </div>
         </div>
       </form>
 
-      {result ? (
+      {isProcessing ? <ProcessingSkeleton /> : null}
+
+      {result && !isProcessing ? (
         <div className="space-y-6">
-          <div className="grid gap-4 sm:grid-cols-4">
-            <Card>
-              <CardContent className="pt-6">
-                <div className="text-sm text-muted-foreground">Total duration</div>
-                <div className="mt-1 text-2xl font-semibold">{formatDuration(result.totalDuration)}</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="text-sm text-muted-foreground">Scene count</div>
-                <div className="mt-1 text-2xl font-semibold">{result.sceneCount}</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="text-sm text-muted-foreground">Mode</div>
-                <div className="mt-1 text-2xl font-semibold capitalize">{result.sceneMode}</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="text-sm text-muted-foreground">Language</div>
-                <div className="mt-1 text-2xl font-semibold uppercase">{result.detectedLanguage}</div>
-              </CardContent>
-            </Card>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {[
+              { label: "Duration", value: formatDuration(result.totalDuration), icon: Clock3 },
+              { label: "Scene count", value: String(result.sceneCount), icon: Film },
+              { label: "Mode", value: result.sceneMode, icon: Ruler },
+              { label: "Language", value: result.detectedLanguage.toUpperCase(), icon: Languages },
+            ].map((stat) => (
+              <div key={stat.label} className="snow-panel p-4">
+                <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground">
+                  <stat.icon className="h-3.5 w-3.5" />
+                  {stat.label}
+                </div>
+                <p className="mt-2 text-2xl font-semibold capitalize">{stat.value}</p>
+              </div>
+            ))}
           </div>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between gap-4">
+          <div className="snow-panel p-5">
+            <SceneTimeline
+              scenes={result.scenes}
+              totalDuration={result.totalDuration}
+              activeSceneId={activeSceneId}
+              onSceneSelect={setActiveSceneId}
+            />
+          </div>
+
+          <div className="snow-panel overflow-hidden">
+            <div className="flex flex-col gap-4 border-b border-white/10 p-5 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <CardTitle>Formatted output</CardTitle>
-                <CardDescription>Ready for CRAVE &amp; CONQUER scene prompt files.</CardDescription>
+                <h2 className="text-sm font-semibold">Export for CRAVE &amp; CONQUER</h2>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Feed .txt or JSON into your Veo3 prompt agent — exact scene count included.
+                </p>
               </div>
               <div className="flex flex-wrap gap-2">
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
+                  className="cursor-pointer"
                   onClick={async () => {
                     await copyToClipboard(result.formattedText);
-                    toast.success("Formatted text copied.");
+                    toast.success("Scene blocks copied.");
                   }}
                 >
                   <Copy className="mr-2 h-4 w-4" />
-                  Copy text
+                  Copy .txt
                 </Button>
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
+                  className="cursor-pointer"
                   onClick={() => downloadTextFile("snow-transcriber-scenes.txt", result.formattedText)}
                 >
                   <Download className="mr-2 h-4 w-4" />
@@ -322,8 +377,8 @@ export function TranscriberWorkspace() {
                 </Button>
                 <Button
                   type="button"
-                  variant="outline"
                   size="sm"
+                  className="cursor-pointer"
                   onClick={() =>
                     downloadTextFile(
                       "snow-transcriber-agent.json",
@@ -332,34 +387,49 @@ export function TranscriberWorkspace() {
                   }
                 >
                   <Download className="mr-2 h-4 w-4" />
-                  Download JSON
+                  Agent JSON
                 </Button>
               </div>
-            </CardHeader>
-            <CardContent>
-              <Textarea value={result.formattedText} readOnly className="min-h-[320px] font-mono text-xs" />
-            </CardContent>
-          </Card>
+            </div>
+            <Textarea
+              value={result.formattedText}
+              readOnly
+              className="min-h-[280px] resize-y rounded-none border-0 bg-black/20 font-mono text-xs leading-relaxed focus-visible:ring-0"
+            />
+          </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Scene breakdown</CardTitle>
-              <CardDescription>Each row is one video prompt target for your agent.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {result.scenes.map((scene) => (
-                <div key={scene.id} className="rounded-lg border p-4">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="font-medium">
-                      Scene {String(scene.id).padStart(2, "0")} · {scene.timestampRange}
+          <div className="space-y-3">
+            <h2 className="text-sm font-semibold">Scene breakdown</h2>
+            <div className="grid gap-3">
+              {result.scenes.map((scene) => {
+                const isActive = activeSceneId === scene.id;
+                return (
+                  <button
+                    key={scene.id}
+                    type="button"
+                    onClick={() => setActiveSceneId(scene.id)}
+                    className={cn(
+                      "snow-panel w-full cursor-pointer p-4 text-left transition-colors duration-200",
+                      isActive && "border-primary/40 bg-primary/5",
+                    )}
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-xs text-accent">
+                          SCENE {String(scene.id).padStart(2, "0")}
+                        </span>
+                        <span className="font-mono text-sm font-medium">{scene.timestampRange}</span>
+                      </div>
+                      <Badge variant="secondary">{scene.wordCount} words</Badge>
                     </div>
-                    <div className="text-xs text-muted-foreground">{scene.wordCount} words</div>
-                  </div>
-                  <p className="mt-2 text-sm text-muted-foreground">{scene.text || "(no speech in range)"}</p>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
+                    <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                      {scene.text || "(no speech detected in this range)"}
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </div>
       ) : null}
     </div>

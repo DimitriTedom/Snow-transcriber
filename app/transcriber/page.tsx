@@ -1,21 +1,41 @@
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
+
 import { TranscriberWorkspace } from "@/components/transcriber/transcriber-workspace";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
 export const metadata = {
-  title: "Transcriber",
+  title: "Workspace",
   description: "Turn voiceover audio into timestamped scenes for Veo3 prompt generation.",
 };
 
 export default function TranscriberPage() {
   return (
-    <div className="space-y-6">
-      <div>
-        <p className="text-sm text-muted-foreground">Snow Transcriber · Local Whisper engine</p>
-        <h1 className="mt-2 text-3xl font-semibold tracking-tight">Audio to timestamped scenes</h1>
-        <p className="mt-2 max-w-3xl text-muted-foreground">
-          Upload your generated voiceover, choose fixed 6-second chunks or natural pause cuts, and
-          export scene blocks your AI agent can turn into exact Veo3 prompt counts.
-        </p>
+    <div className="space-y-8">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="space-y-3">
+          <Button asChild variant="ghost" size="sm" className="-ml-2 h-8 cursor-pointer px-2 text-muted-foreground">
+            <Link href="/">
+              <ArrowLeft className="mr-1.5 h-3.5 w-3.5" />
+              Home
+            </Link>
+          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="default">CRAVE &amp; CONQUER</Badge>
+            <Badge variant="secondary">Local Whisper</Badge>
+            <Badge variant="outline">Veo3 ready</Badge>
+          </div>
+          <h1 className="text-balance text-3xl font-semibold tracking-tight sm:text-4xl">
+            Voiceover → <span className="text-primary">timestamped scenes</span>
+          </h1>
+          <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+            Upload generated narration, split into exact scene counts, and export prompt-ready blocks
+            for your AI video agent. No guessing. No FoziScribe minute limits.
+          </p>
+        </div>
       </div>
+
       <TranscriberWorkspace />
     </div>
   );

@@ -85,6 +85,17 @@ Docker is used for the Python engine only (FFmpeg + Whisper dependencies). The N
 | `WHISPER_COMPUTE_TYPE` | `int8` | `int8`, `float16`, `float32` |
 | `MAX_UPLOAD_MB` | `100` | Upload size limit |
 
+## AMD GPU / low VRAM (e.g. 2GB)
+
+Snow Transcriber's Docker engine uses **faster-whisper + CTranslate2**, which in this setup runs on **CPU** (`WHISPER_DEVICE=cpu`, `WHISPER_COMPUTE_TYPE=int8`).
+
+| Your hardware | Recommendation |
+|---------------|----------------|
+| **AMD 2GB VRAM** | Stay on CPU. VRAM is too small for Whisper `base`+ on GPU anyway. |
+| **Faster runs** | Set `WHISPER_MODEL=tiny` in `.env` — less accurate, much quicker. |
+| **NVIDIA + CUDA** | Set `WHISPER_DEVICE=cuda` and pass GPU into Docker (advanced). |
+| **AMD on Windows** | Native DirectML is possible but not wired yet; Docker won't use your AMD GPU today. |
+
 ## Useful commands
 
 ```bash
