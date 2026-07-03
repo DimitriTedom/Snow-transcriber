@@ -1,5 +1,5 @@
 {
-  "name": "nextjs-supabase-prisma-template",
+  "name": "snow-transcriber",
   "version": "0.1.0",
   "private": true,
   "engines": {
@@ -20,7 +20,11 @@
     "db:studio": "prisma studio",
     "supabase:start": "supabase start",
     "supabase:stop": "supabase stop",
-    "supabase:status": "supabase status"
+    "supabase:status": "supabase status",
+    "engine:up": "docker compose up engine --build -d",
+    "engine:down": "docker compose stop engine",
+    "engine:logs": "docker compose logs -f engine",
+    "dev:all": "docker compose up engine --build -d && next dev"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.1.1",

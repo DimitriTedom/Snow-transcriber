@@ -1,82 +1,115 @@
-# Next.js + Supabase + Prisma Template
+# Snow Transcriber
 
-[![CI](https://github.com/DimitriTedom/NEXTJS-SUPABASE-TEMPLATE/actions/workflows/ci.yml/badge.svg)](https://github.com/DimitriTedom/NEXTJS-SUPABASE-TEMPLATE/actions/workflows/ci.yml)
-[![License](https://img.shields.io/github/license/DimitriTedom/NEXTJS-SUPABASE-TEMPLATE)](LICENSE)
+Local audio-to-timestamp scene generator for CRAVE & CONQUER and other AI video workflows.
 
-A clean starter for:
+Upload a voiceover, get exact scene counts with timestamps, and export:
 
-- Next.js (App Router)
-- Supabase Auth (email + password)
-- Prisma (PostgreSQL)
-- shadcn/ui + Tailwind
-- Docker + Vercel-friendly build
+- `.txt` blocks matching `[SCENE XX] [TIMESTAMP RANGE] [TYPE]`
+- `.json` for your AI prompt agent
 
-## Quick start (local)
+Powered by **Next.js** (UI) + **faster-whisper** (local transcription engine in Docker).
 
-### 1) Install
+## Quick start
+
+> **Windows note:** If the project lives in a folder with `&` in the path (e.g. `CRAVE & CONQUER`), some npm postinstall scripts can fail. Use a subst drive or clone to a simple path like `D:\SnowDev\Snow-transcriber`:
+>
+> ```powershell
+> subst S: "D:\SnowDev\Videos\Youtube\CRAVE & CONQUER\Snow-transcriber"
+> S:
+> npm install
+> ```
+
+### 1) Install frontend deps
 
 ```bash
 npm install
 ```
 
-Optional formatting:
-
-```bash
-npm run format
-```
-
 ### 2) Configure env
 
 ```bash
-cp .env.template .env
+cp .env.example .env
 ```
 
-Fill in `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+For local transcription, this is enough:
 
-### 3) Start Supabase locally
+```env
+TRANSCRIBER_ENGINE_URL=http://localhost:8000
+```
 
-Requires the Supabase CLI and Docker.
+Supabase/Prisma vars are optional unless you use auth/dashboard features from the template.
+
+### 3) Start the Whisper engine (Docker)
 
 ```bash
-supabase start
+npm run engine:up
 ```
 
-### 4) Prisma
+First build downloads the Whisper model and can take a few minutes.
 
-```bash
-npx prisma generate
-npx prisma migrate dev --name init
-```
-
-### 5) Run the app
+### 4) Run the app
 
 ```bash
 npm run dev
 ```
 
-Open http://localhost:3000
+Open http://localhost:3000/transcriber
 
-## Routes included
-
-- `/auth/register` – create account
-- `/auth/login` – login
-- `/dashboard` – protected page
-- `/account` – protected page (reads Profile from Prisma)
-
-## Deploy
-
-### Vercel
-
-Set env vars:
-
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- `DATABASE_URL`
-- `DIRECT_URL`
-
-### Docker
+Or run both in one command:
 
 ```bash
-docker build -t nextjs-template .
-docker run -p 3000:3000 --env-file .env nextjs-template
+npm run dev:all
 ```
+
+## Scene modes
+
+| Mode | Use case |
+|------|----------|
+| **Fixed duration** | Split every N seconds (default 6s) for Veo3 clip math |
+| **Natural pauses** | Cut on voiceover pauses (FoziScribe-style rhythm) |
+
+## Architecture
+
+```
+Browser → Next.js /api/transcribe → Python engine :8000 → faster-whisper
+```
+
+Docker is used for the Python engine only (FFmpeg + Whisper dependencies). The Next.js app runs locally with `npm run dev`.
+
+## Engine environment
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `WHISPER_MODEL` | `base` | `tiny`, `base`, `small`, `medium`, `large-v3` |
+| `WHISPER_DEVICE` | `cpu` | `cpu` or `cuda` (if GPU available in Docker) |
+| `WHISPER_COMPUTE_TYPE` | `int8` | `int8`, `float16`, `float32` |
+| `MAX_UPLOAD_MB` | `100` | Upload size limit |
+
+## Useful commands
+
+```bash
+npm run engine:up      # build + start engine
+npm run engine:down    # stop engine
+npm run engine:logs    # tail engine logs
+npm run dev            # Next.js dev server
+```
+
+## Production docker compose
+
+```bash
+docker compose up --build
+```
+
+Runs both `engine` and `app` services.
+
+## Output example
+
+```
+=========================================================
+[SCENE 01] [00:00.0 – 00:06.0] [?]
+
+The Portuguese fleet first reached the coast of Brazil...
+=========================================================
+```
+
+JSON export includes `sceneCount`, per-scene `start`/`end`/`duration`, and `text` for agent consumption.

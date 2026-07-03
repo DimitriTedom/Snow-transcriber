@@ -11,9 +11,12 @@ export async function SiteHeader() {
     <header className="border-b bg-background/80 backdrop-blur">
       <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4">
         <Link href="/" className="font-semibold tracking-tight">
-          Next.js Template
+          Snow Transcriber
         </Link>
         <nav className="flex items-center gap-2">
+          <Button asChild variant="ghost">
+            <Link href="/transcriber">Transcriber</Link>
+          </Button>
           {user ? (
             <>
               <Button asChild variant="ghost">

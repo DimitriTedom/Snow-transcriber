@@ -1,4 +1,22 @@
 services:
+  engine:
+    build:
+      context: ./engine
+    ports:
+      - "8000:8000"
+    environment:
+      WHISPER_MODEL: ${WHISPER_MODEL:-base}
+      WHISPER_DEVICE: ${WHISPER_DEVICE:-cpu}
+      WHISPER_COMPUTE_TYPE: ${WHISPER_COMPUTE_TYPE:-int8}
+      ENGINE_CORS_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
+      MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-100}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 90s
+
   app:
     build: .
     ports:
@@ -8,3 +26,7 @@ services:
     environment:
       NODE_ENV: production
       NEXT_TELEMETRY_DISABLED: "1"
+      TRANSCRIBER_ENGINE_URL: http://engine:8000
+    depends_on:
+      engine:
+        condition: service_healthy

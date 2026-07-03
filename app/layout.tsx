@@ -10,10 +10,10 @@ const inter = Inter({ subsets: ["latin"], display: "swap" });
 
 export const metadata: Metadata = {
   title: {
-    default: "Next.js Template",
-    template: "%s | Next.js Template",
+    default: "Snow Transcriber",
+    template: "%s | Snow Transcriber",
   },
-  description: "Next.js 15 + Supabase Auth + Prisma starter template.",
+  description: "Local audio-to-timestamp scene generator for Veo3 and AI video workflows.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
