@@ -11,13 +11,7 @@ Powered by **Next.js** (UI) + **faster-whisper** (local transcription engine in 
 
 ## Quick start
 
-> **Windows note:** If the project lives in a folder with `&` in the path (e.g. `CRAVE & CONQUER`), some npm postinstall scripts can fail. Use a subst drive or clone to a simple path like `D:\SnowDev\Snow-transcriber`:
->
-> ```powershell
-> subst S: "D:\SnowDev\Videos\Youtube\CRAVE & CONQUER\Snow-transcriber"
-> S:
-> npm install
-> ```
+> **Windows note:** If the project path contains `&` (e.g. `CRAVE & CONQUER`), Windows cmd breaks npm `.bin` shims. This repo uses `scripts/run-next.mjs` so `npm run dev` and `npm run dev:all` work from the real path. For `npm install` issues, use a subst drive or clone to a path without `&`.
 
 ### 1) Install frontend deps
 
