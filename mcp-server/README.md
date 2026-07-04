@@ -34,37 +34,15 @@ Uses **stdio** transport (local process) → talks to the Whisper engine at `htt
 
 ## Configure your agent
 
-Replace `ABSOLUTE_PATH_TO_REPO` with your Snow Transcriber install path.
+See **[MCP_SETUP.md](./MCP_SETUP.md)** for full setup across:
 
-### Cursor
+- **Grok** (`~/.grok/config.toml`)
+- **Antigravity IDE / Gemini CLI** (`~/.gemini/config/mcp_config.json`)
+- **VS Code** (`.vscode/mcp.json`)
+- **Cursor** (`.cursor/mcp.json`)
+- **Claude Desktop** (`config/claude-desktop.mcp.json`)
 
-Add to `.cursor/mcp.json` (project) or global Cursor MCP settings:
-
-```json
-{
-  "mcpServers": {
-    "snow-transcriber": {
-      "command": "node",
-      "args": ["D:/SnowDev/Videos/Youtube/CRAVE & CONQUER/Snow-transcriber/mcp-server/dist/index.js"],
-      "env": {
-        "SNOW_ENGINE_URL": "http://localhost:8000"
-      }
-    }
-  }
-}
-```
-
-### Claude Desktop
-
-Merge into `%APPDATA%/Claude/claude_desktop_config.json` — see `config/claude-desktop.mcp.json`.
-
-### Antigravity / other MCP clients
-
-Any client that supports **stdio MCP** with a `command` + `args` config works the same way. Point `args` at:
-
-```
-<mcp-server>/dist/index.js
-```
+Template configs live in `mcp-server/config/`.
 
 ## Example agent flow
 

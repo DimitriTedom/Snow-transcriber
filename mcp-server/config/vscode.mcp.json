@@ -1,0 +1,12 @@
+{
+  "servers": {
+    "snow-transcriber": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["ABSOLUTE_PATH_TO_REPO/mcp-server/dist/index.js"],
+      "env": {
+        "SNOW_ENGINE_URL": "http://localhost:8000"
+      }
+    }
+  }
+}

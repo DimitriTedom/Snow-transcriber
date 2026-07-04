@@ -17,6 +17,7 @@ import { toast } from "sonner";
 
 import { AudioDropzone } from "@/components/transcriber/audio-dropzone";
 import { EngineStatus } from "@/components/transcriber/engine-status";
+import { SystemMonitor } from "@/components/transcriber/system-monitor";
 import { ProcessingSkeleton } from "@/components/transcriber/processing-skeleton";
 import { SceneTimeline } from "@/components/transcriber/scene-timeline";
 import { WorkflowSteps } from "@/components/transcriber/workflow-steps";
@@ -123,6 +124,7 @@ export function TranscriberWorkspace() {
       <form onSubmit={handleSubmit} className="grid gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">
         <aside className="space-y-4 xl:sticky xl:top-24 xl:self-start">
           <EngineStatus />
+          <SystemMonitor active={isProcessing} />
 
           <div className="snow-panel space-y-5 p-5">
             <div>

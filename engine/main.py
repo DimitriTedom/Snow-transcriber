@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from scenes import Scene, build_fixed_scenes, build_pause_scenes, format_timestamp_range
+from system import get_system_stats
 from transcribe import transcribe_upload
 
 app = FastAPI(title="Snow Transcriber Engine", version="0.1.0")
@@ -102,6 +103,11 @@ def build_agent_json(
             for scene in scenes
         ],
     }
+
+
+@app.get("/system/stats")
+def system_stats() -> dict:
+    return get_system_stats()
 
 
 @app.get("/health")

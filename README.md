@@ -99,11 +99,13 @@ npm run mcp:install
 npm run mcp:build
 ```
 
-**Cursor:** `.cursor/mcp.json` is preconfigured in this repo. Enable MCP in Cursor settings, ensure `npm run engine:up` is running, then ask your agent to use `snow_transcribe_audio`.
-
 **Tools:** `snow_engine_health`, `snow_transcribe_audio`, `snow_list_scenes`, `snow_format_veo3_blocks`, `snow_estimate_scene_count`, `snow_save_export`
 
-See [mcp-server/README.md](mcp-server/README.md) for Antigravity / Claude Desktop setup.
+See [mcp-server/MCP_SETUP.md](mcp-server/MCP_SETUP.md) for Grok, Antigravity, VS Code, Cursor, and Claude Desktop setup.
+
+## System metrics
+
+The transcriber UI shows live **CPU, RAM, and disk** usage from the Whisper engine (polls every ~2.5s). During transcription, higher CPU usually means Whisper is working at full speed — useful for understanding wait time vs hardware.
 
 ## Useful commands
 
