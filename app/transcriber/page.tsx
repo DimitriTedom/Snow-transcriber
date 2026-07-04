@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Plug } from "lucide-react";
 
 import { TranscriberWorkspace } from "@/components/transcriber/transcriber-workspace";
 import { Badge } from "@/components/ui/badge";
@@ -33,6 +33,12 @@ export default function TranscriberPage() {
             Upload generated narration, split into exact scene counts, and export prompt-ready blocks
             for your AI video agent. No guessing. No FoziScribe minute limits.
           </p>
+          <Button asChild variant="outline" size="sm" className="cursor-pointer">
+            <Link href="/mcp" className="flex items-center gap-1.5">
+              <Plug className="h-3.5 w-3.5" />
+              Connect your AI agent (MCP)
+            </Link>
+          </Button>
         </div>
       </div>
 

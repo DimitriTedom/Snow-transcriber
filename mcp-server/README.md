@@ -34,6 +34,8 @@ Uses **stdio** transport (local process) → talks to the Whisper engine at `htt
 
 ## Configure your agent
 
+**UI guide:** run the app and open `/mcp` for interactive setup with copy-paste configs.
+
 See **[MCP_SETUP.md](./MCP_SETUP.md)** for full setup across:
 
 - **Grok** (`~/.grok/config.toml`)

@@ -24,6 +24,9 @@ export async function SiteHeader() {
           <Button asChild variant="ghost" size="sm" className="hidden cursor-pointer sm:inline-flex">
             <Link href="/transcriber">Workspace</Link>
           </Button>
+          <Button asChild variant="ghost" size="sm" className="hidden cursor-pointer md:inline-flex">
+            <Link href="/mcp">MCP setup</Link>
+          </Button>
           {user ? (
             <>
               <Button asChild variant="ghost" size="sm" className="cursor-pointer">

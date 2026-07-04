@@ -101,7 +101,9 @@ npm run mcp:build
 
 **Tools:** `snow_engine_health`, `snow_transcribe_audio`, `snow_list_scenes`, `snow_format_veo3_blocks`, `snow_estimate_scene_count`, `snow_save_export`
 
-See [mcp-server/MCP_SETUP.md](mcp-server/MCP_SETUP.md) for Grok, Antigravity, VS Code, Cursor, and Claude Desktop setup.
+**In-app guide:** open [/mcp](http://localhost:3000/mcp) for copy-paste configs per client (Grok, Antigravity, VS Code, Cursor, Claude).
+
+See [mcp-server/MCP_SETUP.md](mcp-server/MCP_SETUP.md) for the full markdown reference.
 
 ## System metrics
 

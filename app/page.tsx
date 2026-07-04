@@ -63,6 +63,9 @@ export default function HomePage() {
               </Link>
             </Button>
             <Button asChild variant="outline" size="lg" className="cursor-pointer border-white/15">
+              <Link href="/mcp">Connect AI (MCP)</Link>
+            </Button>
+            <Button asChild variant="outline" size="lg" className="cursor-pointer border-white/15">
               <a href="https://github.com/DimitriTedom/Snow-transcriber" target="_blank" rel="noreferrer">
                 View on GitHub
               </a>
