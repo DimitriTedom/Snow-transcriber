@@ -1,11 +1,27 @@
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
-export const maxDuration = 300;
+export const maxDuration = 3600;
 
 const ENGINE_URL = process.env.TRANSCRIBER_ENGINE_URL ?? "http://localhost:8000";
 
+function isAbortError(error: unknown) {
+  return (
+    (error instanceof DOMException && error.name === "AbortError") ||
+    (error instanceof Error &&
+      (error.name === "AbortError" || error.message.toLowerCase().includes("aborted")))
+  );
+}
+
 export async function POST(request: Request) {
+  const engineAbort = new AbortController();
+
+  const onClientAbort = () => engineAbort.abort();
+  if (request.signal.aborted) {
+    return NextResponse.json({ error: "Transcription cancelled." }, { status: 499 });
+  }
+  request.signal.addEventListener("abort", onClientAbort);
+
   try {
     const incoming = await request.formData();
     const audio = incoming.get("audio");
@@ -27,6 +43,7 @@ export async function POST(request: Request) {
     const response = await fetch(`${ENGINE_URL}/transcribe`, {
       method: "POST",
       body: engineForm,
+      signal: engineAbort.signal,
     });
 
     const payload = await response.json();
@@ -40,13 +57,19 @@ export async function POST(request: Request) {
 
     return NextResponse.json(payload);
   } catch (error) {
+    if (request.signal.aborted || engineAbort.signal.aborted || isAbortError(error)) {
+      return NextResponse.json({ error: "Transcription cancelled." }, { status: 499 });
+    }
+
     const message =
       error instanceof Error && error.message.includes("fetch failed")
-        ? "Cannot reach transcription engine. Start it with `npm run engine:up`."
+        ? "Lost connection to the transcription engine. It may still be working — check `npm run engine:logs` before retrying."
         : error instanceof Error
           ? error.message
           : "Unexpected transcription error.";
 
     return NextResponse.json({ error: message }, { status: 500 });
+  } finally {
+    request.signal.removeEventListener("abort", onClientAbort);
   }
 }

@@ -67,6 +67,10 @@ def get_transcription_service() -> TranscriptionService:
     return _service
 
 
+def is_model_ready() -> bool:
+    return _service is not None
+
+
 def transcribe_upload(file_name: str, file_bytes: bytes, language: str | None = None) -> tuple[list[Word], float, str]:
     suffix = Path(file_name).suffix or ".wav"
     with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:

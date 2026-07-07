@@ -11,7 +11,7 @@ import {
   Terminal,
   Wrench,
 } from "lucide-react";
-import { toast } from "sonner";
+import { notify } from "@/lib/notifications";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -32,7 +32,7 @@ type McpSetupGuideProps = {
 
 async function copyText(value: string, label: string) {
   await navigator.clipboard.writeText(value);
-  toast.success(`${label} copied to clipboard`);
+  notify.copied(label);
 }
 
 export function McpSetupGuide({ config }: McpSetupGuideProps) {

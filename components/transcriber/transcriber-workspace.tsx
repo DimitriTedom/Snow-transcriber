@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   Clock3,
   Copy,
@@ -11,11 +11,15 @@ import {
   Pause,
   Ruler,
   Sparkles,
+  Square,
   Timer,
 } from "lucide-react";
-import { toast } from "sonner";
+import { elapsedSuffix, formatElapsed } from "@/lib/format-elapsed";
+import { notify } from "@/lib/notifications";
+import { useOperationTimer } from "@/hooks/use-operation-timer";
 
 import { AudioDropzone } from "@/components/transcriber/audio-dropzone";
+import { OperationTimer } from "@/components/operation-timer";
 import { EngineStatus } from "@/components/transcriber/engine-status";
 import { SystemMonitor } from "@/components/transcriber/system-monitor";
 import { ProcessingSkeleton } from "@/components/transcriber/processing-skeleton";
@@ -28,6 +32,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import type { TranscriberResult, TranscriberSettings } from "@/lib/transcriber/types";
+import { waitForEngineReady, type EngineWaitStatus } from "@/lib/transcriber/wait-for-engine";
+
+type ProcessingPhase = "waiting_engine" | "transcribing" | null;
 
 const defaultSettings: TranscriberSettings = {
   mode: "fixed",
@@ -66,26 +73,72 @@ export function TranscriberWorkspace() {
   const [settings, setSettings] = useState<TranscriberSettings>(defaultSettings);
   const [result, setResult] = useState<TranscriberResult | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [processingPhase, setProcessingPhase] = useState<ProcessingPhase>(null);
+  const [processingElapsedMs, setProcessingElapsedMs] = useState<number | null>(null);
   const [activeSceneId, setActiveSceneId] = useState<number | undefined>();
+  const processTimer = useOperationTimer();
+  const abortRef = useRef<AbortController | null>(null);
 
   const estimatedScenes = useMemo(() => {
     if (!audioFile || settings.mode !== "fixed") return null;
     return null;
   }, [audioFile, settings.mode]);
 
+  function handleStop() {
+    abortRef.current?.abort();
+  }
+
+  function updateLoadingToast(
+    toastId: ReturnType<typeof notify.loading>,
+    status: EngineWaitStatus | ProcessingPhase,
+    elapsedLabel: string,
+  ) {
+    const message =
+      status === "waiting_engine" || status === "warming" || status === "offline"
+        ? `Waiting for Whisper engine… ${elapsedLabel}`
+        : `Transcribing voiceover and building scenes… ${elapsedLabel}`;
+
+    notify.update(toastId, {
+      render: message,
+      type: "info",
+      isLoading: true,
+      autoClose: false,
+    });
+  }
+
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     if (!audioFile) {
-      toast.error("Upload a voiceover file first.");
+      notify.error("Upload a voiceover file first.");
       return;
     }
 
+    abortRef.current?.abort();
+    const abortController = new AbortController();
+    abortRef.current = abortController;
+
     setIsProcessing(true);
+    setProcessingPhase("waiting_engine");
     setResult(null);
     setActiveSceneId(undefined);
+    setProcessingElapsedMs(null);
+    processTimer.start();
+
+    const toastId = notify.loading("Waiting for Whisper engine…");
 
     try {
+      await waitForEngineReady({
+        signal: abortController.signal,
+        onStatus: (status) => {
+          setProcessingPhase(status === "ready" ? "transcribing" : "waiting_engine");
+          updateLoadingToast(toastId, status, processTimer.elapsedLabel);
+        },
+      });
+
+      setProcessingPhase("transcribing");
+      updateLoadingToast(toastId, "transcribing", processTimer.elapsedLabel);
+
       const formData = new FormData();
       formData.append("audio", audioFile);
       formData.append("script", script);
@@ -99,6 +152,7 @@ export function TranscriberWorkspace() {
       const response = await fetch("/api/transcribe", {
         method: "POST",
         body: formData,
+        signal: abortController.signal,
       });
 
       const payload = await response.json();
@@ -107,12 +161,39 @@ export function TranscriberWorkspace() {
         throw new Error(payload.error ?? "Transcription failed.");
       }
 
+      const elapsedMs = processTimer.stop();
+      setProcessingElapsedMs(elapsedMs);
       setResult(payload as TranscriberResult);
       setActiveSceneId(1);
-      toast.success(`${payload.sceneCount} scenes ready for your Veo3 agent.`);
+      notify.update(toastId, {
+        render: `${payload.sceneCount} scenes ready for your Veo3 agent${elapsedSuffix(elapsedMs)}`,
+        type: "success",
+        autoClose: 5000,
+        isLoading: false,
+      });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Transcription failed.");
+      const elapsedMs = processTimer.stop();
+      setProcessingElapsedMs(elapsedMs);
+
+      if (error instanceof DOMException && error.name === "AbortError") {
+        notify.update(toastId, {
+          render: `Transcription stopped${elapsedSuffix(elapsedMs)}`,
+          type: "info",
+          autoClose: 5000,
+          isLoading: false,
+        });
+        return;
+      }
+
+      notify.update(toastId, {
+        render: `${error instanceof Error ? error.message : "Transcription failed."}${elapsedSuffix(elapsedMs)}`,
+        type: "error",
+        autoClose: 10000,
+        isLoading: false,
+      });
     } finally {
+      abortRef.current = null;
+      setProcessingPhase(null);
       setIsProcessing(false);
     }
   }
@@ -125,6 +206,20 @@ export function TranscriberWorkspace() {
         <aside className="space-y-4 xl:sticky xl:top-24 xl:self-start">
           <EngineStatus />
           <SystemMonitor active={isProcessing} />
+          {isProcessing ? (
+            <OperationTimer
+              label={processingPhase === "waiting_engine" ? "Waiting for engine" : "Transcribing"}
+              elapsedMs={processTimer.elapsedMs}
+              active
+              variant="panel"
+            />
+          ) : processingElapsedMs !== null ? (
+            <OperationTimer
+              label="Last run"
+              elapsedMs={processingElapsedMs}
+              variant="panel"
+            />
+          ) : null}
 
           <div className="snow-panel space-y-5 p-5">
             <div>
@@ -293,29 +388,67 @@ export function TranscriberWorkspace() {
                 : "Cuts land on natural pauses in the voiceover."}
               {estimatedScenes ? ` · ~${estimatedScenes} scenes est.` : null}
             </p>
-            <Button
-              type="submit"
-              size="lg"
-              disabled={isProcessing || !audioFile}
-              className="cursor-pointer snow-glow min-w-[220px]"
-            >
+            <div className="flex flex-wrap items-center gap-2">
               {isProcessing ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Transcribing...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="mr-2 h-4 w-4" />
-                  Generate scenes
-                </>
-              )}
-            </Button>
+                <Button
+                  type="button"
+                  size="lg"
+                  variant="outline"
+                  onClick={handleStop}
+                  className="cursor-pointer min-w-[140px] border-rose-500/30 text-rose-200 hover:bg-rose-500/10"
+                >
+                  <Square className="mr-2 h-4 w-4 fill-current" />
+                  Stop
+                </Button>
+              ) : null}
+              <Button
+                type="submit"
+                size="lg"
+                disabled={isProcessing || !audioFile}
+                className="cursor-pointer snow-glow min-w-[220px]"
+              >
+                {isProcessing ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {processingPhase === "waiting_engine"
+                      ? `Waiting… ${processTimer.elapsedLabel}`
+                      : `Transcribing… ${processTimer.elapsedLabel}`}
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="mr-2 h-4 w-4" />
+                    Generate scenes
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
         </div>
       </form>
 
-      {isProcessing ? <ProcessingSkeleton /> : null}
+      {isProcessing ? (
+        <div className="space-y-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <OperationTimer
+              label={processingPhase === "waiting_engine" ? "Waiting for engine" : "Transcribing"}
+              elapsedMs={processTimer.elapsedMs}
+              active
+              variant="panel"
+              className="border-amber-500/20 bg-amber-500/10 sm:flex-1"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleStop}
+              className="cursor-pointer border-rose-500/30 text-rose-200 hover:bg-rose-500/10"
+            >
+              <Square className="mr-2 h-4 w-4 fill-current" />
+              Stop
+            </Button>
+          </div>
+          <ProcessingSkeleton phase={processingPhase ?? "transcribing"} />
+        </div>
+      ) : null}
 
       {result && !isProcessing ? (
         <div className="space-y-6">
@@ -325,6 +458,15 @@ export function TranscriberWorkspace() {
               { label: "Scene count", value: String(result.sceneCount), icon: Film },
               { label: "Mode", value: result.sceneMode, icon: Ruler },
               { label: "Language", value: result.detectedLanguage.toUpperCase(), icon: Languages },
+              ...(processingElapsedMs !== null
+                ? [
+                    {
+                      label: "Processing time",
+                      value: formatElapsed(processingElapsedMs),
+                      icon: Timer,
+                    },
+                  ]
+                : []),
             ].map((stat) => (
               <div key={stat.label} className="snow-panel p-4">
                 <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground">
@@ -361,7 +503,7 @@ export function TranscriberWorkspace() {
                   className="cursor-pointer"
                   onClick={async () => {
                     await copyToClipboard(result.formattedText);
-                    toast.success("Scene blocks copied.");
+                    notify.copied("Scene blocks");
                   }}
                 >
                   <Copy className="mr-2 h-4 w-4" />

@@ -19,8 +19,11 @@ function run(command, args, options = {}) {
 console.log("Starting Whisper engine (Docker)...");
 const engineStatus = run("docker", ["compose", "up", "engine", "--build", "-d"]);
 if (engineStatus !== 0) {
-  console.error("Failed to start engine. Is Docker running?");
-  process.exit(engineStatus);
+  console.warn("");
+  console.warn("⚠ Whisper engine failed to start (is Docker Desktop running?).");
+  console.warn("  UI will still start, but transcription will fail until you run:");
+  console.warn("  npm run engine:up");
+  console.warn("");
 }
 
 if (!existsSync(nextBin)) {

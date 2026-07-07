@@ -7,7 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
 type EngineHealth = {
-  status: "online" | "offline" | "checking";
+  status: "online" | "warming" | "offline" | "checking";
+  ready?: boolean;
   whisperModel?: string;
   whisperDevice?: string;
   error?: string;
@@ -22,7 +23,8 @@ export function EngineStatus() {
       const response = await fetch("/api/engine-health");
       const payload = await response.json();
       setHealth({
-        status: response.ok ? "online" : "offline",
+        status: response.ok ? (payload.ready ? "online" : "warming") : "offline",
+        ready: payload.ready,
         whisperModel: payload.whisperModel,
         whisperDevice: payload.whisperDevice,
         error: payload.error,
@@ -58,8 +60,22 @@ export function EngineStatus() {
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        <Badge variant={health.status === "online" ? "success" : health.status === "checking" ? "warning" : "outline"}>
-          {health.status === "checking" ? "Checking..." : health.status === "online" ? "Online" : "Offline"}
+        <Badge
+          variant={
+            health.status === "online"
+              ? "success"
+              : health.status === "checking" || health.status === "warming"
+                ? "warning"
+                : "outline"
+          }
+        >
+          {health.status === "checking"
+            ? "Checking..."
+            : health.status === "online"
+              ? "Ready"
+              : health.status === "warming"
+                ? "Loading model"
+                : "Offline"}
         </Badge>
         {health.whisperModel ? (
           <Badge variant="secondary" className="font-mono">
@@ -76,8 +92,10 @@ export function EngineStatus() {
 
       <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
         {health.status === "online"
-          ? "Local faster-whisper is ready. First run may download the model."
-          : health.error ?? "Start with npm run engine:up"}
+          ? "Local faster-whisper is ready for transcription."
+          : health.status === "warming"
+            ? "Whisper model is loading. Transcription will start once it is ready."
+            : health.error ?? "Start with npm run engine:up"}
       </p>
 
       <p className="mt-2 text-xs text-muted-foreground/80">

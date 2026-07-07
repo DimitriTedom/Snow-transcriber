@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import asyncio
 import os
+from contextlib import asynccontextmanager
 from typing import Literal
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
@@ -9,9 +11,23 @@ from pydantic import BaseModel
 
 from scenes import Scene, build_fixed_scenes, build_pause_scenes, format_timestamp_range
 from system import get_system_stats
-from transcribe import transcribe_upload
+from transcribe import get_transcription_service, is_model_ready, transcribe_upload
 
-app = FastAPI(title="Snow Transcriber Engine", version="0.1.0")
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    async def warmup() -> None:
+        try:
+            await asyncio.to_thread(get_transcription_service)
+        except Exception as error:  # noqa: BLE001
+            print(f"Whisper model warmup failed: {error}")
+
+    warmup_task = asyncio.create_task(warmup())
+    yield
+    warmup_task.cancel()
+
+
+app = FastAPI(title="Snow Transcriber Engine", version="0.1.0", lifespan=lifespan)
 
 allowed_origins = os.getenv("ENGINE_CORS_ORIGINS", "http://localhost:3000").split(",")
 app.add_middleware(
@@ -115,6 +131,14 @@ def health() -> dict[str, str]:
     return {"status": "ok", "service": "snow-transcriber-engine"}
 
 
+@app.get("/ready")
+def ready() -> dict[str, str | bool]:
+    return {
+        "ready": is_model_ready(),
+        "service": "snow-transcriber-engine",
+    }
+
+
 @app.post("/transcribe", response_model=TranscriptionResponse)
 async def transcribe(
     audio: UploadFile = File(...),
@@ -141,10 +165,11 @@ async def transcribe(
         )
 
     try:
-        words, total_duration, detected_language = transcribe_upload(
+        words, total_duration, detected_language = await asyncio.to_thread(
+            transcribe_upload,
             audio.filename,
             file_bytes,
-            language=language or None,
+            language or None,
         )
     except Exception as error:  # noqa: BLE001
         raise HTTPException(status_code=500, detail=f"Transcription failed: {error}") from error

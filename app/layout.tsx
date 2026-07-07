@@ -6,7 +6,7 @@ import { AmbientBackground } from "@/components/ambient-background";
 import { CssBootstrap } from "@/components/css-bootstrap";
 import { ThemeProvider } from "@/components/theme-provider";
 import { SiteHeader } from "@/components/site-header";
-import { Toaster } from "@/components/ui/sonner";
+import { ToastProvider } from "@/components/ui/toast-provider";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -40,7 +40,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <AmbientBackground />
           <SiteHeader />
           <main className="mx-auto w-full max-w-7xl px-4 pb-16 pt-24 sm:px-6 lg:px-8">{children}</main>
-          <Toaster richColors closeButton />
+          <ToastProvider />
         </ThemeProvider>
       </body>
     </html>

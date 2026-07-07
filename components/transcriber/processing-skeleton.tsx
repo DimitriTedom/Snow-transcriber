@@ -1,11 +1,28 @@
-export function ProcessingSkeleton() {
+type ProcessingSkeletonProps = {
+  phase?: "waiting_engine" | "transcribing";
+};
+
+const phaseCopy: Record<NonNullable<ProcessingSkeletonProps["phase"]>, { title: string; detail: string }> = {
+  waiting_engine: {
+    title: "Waiting for Whisper engine",
+    detail: "The model is loading or Docker is starting. Transcription begins once the engine is ready.",
+  },
+  transcribing: {
+    title: "Transcribing and assembling scenes",
+    detail: "Long voiceovers on CPU can take several minutes. Use Stop to cancel.",
+  },
+};
+
+export function ProcessingSkeleton({ phase = "transcribing" }: ProcessingSkeletonProps) {
+  const copy = phaseCopy[phase];
+
   return (
     <div className="snow-panel space-y-4 p-6" aria-live="polite" aria-busy="true">
       <div className="flex items-center gap-3">
         <div className="h-10 w-10 animate-pulse rounded-xl bg-primary/20" />
         <div className="space-y-2">
-          <div className="h-4 w-48 animate-pulse rounded bg-white/10" />
-          <div className="h-3 w-64 animate-pulse rounded bg-white/5" />
+          <p className="text-sm font-medium">{copy.title}</p>
+          <p className="text-xs text-muted-foreground">{copy.detail}</p>
         </div>
       </div>
       <div className="h-10 animate-pulse rounded-xl bg-white/5" />

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { toast } from "sonner";
+import { notify } from "@/lib/notifications";
 import { z } from "zod";
 
 import { signInSchema } from "@/lib/validations";
@@ -39,10 +39,10 @@ export function LoginForm() {
     startTransition(async () => {
       const res = await signInAction({ ...values, next });
       if (!res.ok) {
-        toast.error(res.error);
+        notify.error(res.error);
         return;
       }
-      toast.success("Welcome back!");
+      notify.success("Welcome back!");
       router.push(res.redirectTo);
       router.refresh();
     });

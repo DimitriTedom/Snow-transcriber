@@ -54,21 +54,47 @@ export type ByteMetric = {
   display: string;
 };
 
+export type CpuCoreStat = {
+  index: number;
+  percent: number;
+  active: boolean;
+};
+
 export type SystemStats = {
   timestamp: number;
   host: string;
   platform: string;
   context: "docker" | "host";
+  hostInfo?: {
+    processor: string;
+    architecture: string;
+    pythonVersion: string;
+  };
   cpu: {
     percent: number;
     count: number;
+    physicalCount: number;
+    logicalCount: number;
+    activeCores: number;
+    activeThreshold: number;
+    cores: CpuCoreStat[];
     loadAverage: number[] | null;
+    frequency: {
+      currentMhz: number | null;
+      minMhz: number | null;
+      maxMhz: number | null;
+    } | null;
   };
   memory: {
     total: ByteMetric;
     used: ByteMetric;
     available: ByteMetric;
     percent: number;
+    swap: {
+      total: ByteMetric;
+      used: ByteMetric;
+      percent: number;
+    };
   };
   disk: {
     path: string;
@@ -79,6 +105,10 @@ export type SystemStats = {
   };
   process: {
     pid: number;
+    name: string;
+    cpuPercent: number;
     memoryPercent: number;
+    memoryRss: ByteMetric;
+    threads: number;
   };
 };
