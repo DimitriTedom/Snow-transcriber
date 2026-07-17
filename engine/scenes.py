@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import difflib
+import re
+
 from dataclasses import dataclass
 
 
@@ -35,6 +38,61 @@ def collect_words_in_range(words: list[Word], start: float, end: float) -> list[
 
 def words_to_text(words: list[Word]) -> str:
     return " ".join(word.text.strip() for word in words if word.text.strip()).strip()
+
+
+def align_script_with_whisper(whisper_words: list[Word], script_text: str, total_duration: float) -> list[Word]:
+    """Aligns the words from the script text with the whisper words using SequenceMatcher."""
+    script_tokens = [w for w in re.split(r'(\s+)', script_text) if w.strip()]
+    if not script_tokens:
+        return whisper_words
+    if not whisper_words:
+        step = total_duration / max(1, len(script_tokens))
+        return [Word(text=tok, start=i*step, end=(i+1)*step) for i, tok in enumerate(script_tokens)]
+
+    def clean(t: str) -> str:
+        return re.sub(r'[^\w]', '', t).lower()
+
+    clean_script = [clean(t) for t in script_tokens]
+    clean_whisper = [clean(w.text) for w in whisper_words]
+
+    matcher = difflib.SequenceMatcher(None, clean_script, clean_whisper)
+    matches = matcher.get_matching_blocks()
+
+    aligned: list[Word] = [Word(text=tok, start=0.0, end=0.0) for tok in script_tokens]
+    matched_indices = set()
+
+    for match in matches:
+        for i in range(match.size):
+            s_idx = match.a + i
+            w_idx = match.b + i
+            aligned[s_idx].start = whisper_words[w_idx].start
+            aligned[s_idx].end = whisper_words[w_idx].end
+            matched_indices.add(s_idx)
+
+    # Interpolate unmatched
+    last_end = 0.0
+    for i in range(len(aligned)):
+        if i in matched_indices:
+            last_end = aligned[i].end
+            continue
+        
+        # Find next matched
+        next_start = total_duration
+        gap_size = 1
+        for j in range(i + 1, len(aligned)):
+            if j in matched_indices:
+                next_start = aligned[j].start
+                gap_size = j - i
+                break
+            if j == len(aligned) - 1:
+                gap_size = (len(aligned) - i)
+                
+        step = max(0.0, (next_start - last_end) / (gap_size + 1))
+        aligned[i].start = round(last_end + step, 3)
+        aligned[i].end = round(last_end + step * 2, 3)
+        last_end = aligned[i].end
+
+    return aligned
 
 
 def detect_pause_boundaries(

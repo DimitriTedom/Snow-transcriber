@@ -5,13 +5,81 @@ import os
 from contextlib import asynccontextmanager
 from typing import Literal
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import BackgroundTasks, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from scenes import Scene, build_fixed_scenes, build_pause_scenes, format_timestamp_range
+from scenes import Scene, align_script_with_whisper, build_fixed_scenes, build_pause_scenes, format_timestamp_range
 from system import get_system_stats
 from transcribe import get_transcription_service, is_model_ready, transcribe_upload
+import uuid
+
+# In-memory dictionary to store active jobs
+jobs = {}
+
+def process_transcription_job(job_id: str, file_bytes: bytes, file_name: str, script: str, mode: str, scene_duration: float, pause_threshold: float, max_scene_duration: float, language: str, scene_type: str):
+    try:
+        words, total_duration, detected_language = transcribe_upload(
+            file_name,
+            file_bytes,
+            language or None,
+        )
+
+        if script.strip():
+            words = align_script_with_whisper(words, script, total_duration)
+
+        max_duration = max_scene_duration if max_scene_duration > 0 else None
+
+        if mode == "pause":
+            scenes = build_pause_scenes(
+                words=words,
+                total_duration=total_duration,
+                pause_threshold=pause_threshold,
+                max_scene_duration=max_duration,
+            )
+            effective_scene_duration = None
+            effective_pause_threshold = pause_threshold
+        else:
+            scenes = build_fixed_scenes(
+                words=words,
+                total_duration=total_duration,
+                scene_duration=scene_duration,
+            )
+            effective_scene_duration = scene_duration
+            effective_pause_threshold = None
+
+        scene_payloads = [scene_to_payload(scene) for scene in scenes]
+        formatted_text = build_formatted_text(scenes, scene_type=scene_type or "?")
+        agent_json = build_agent_json(
+            scenes=scenes,
+            total_duration=total_duration,
+            scene_mode=mode,
+            scene_duration=effective_scene_duration,
+            pause_threshold=effective_pause_threshold,
+            detected_language=detected_language,
+            script=script,
+        )
+
+        response = TranscriptionResponse(
+            totalDuration=round(total_duration, 3),
+            sceneCount=len(scenes),
+            sceneMode=mode,
+            sceneDuration=effective_scene_duration,
+            pauseThreshold=effective_pause_threshold,
+            detectedLanguage=detected_language,
+            scriptProvided=bool(script.strip()),
+            scenes=scene_payloads,
+            formattedText=formatted_text,
+            agentJson=agent_json,
+        )
+
+        jobs[job_id]["status"] = "completed"
+        jobs[job_id]["result"] = response.model_dump()
+
+    except Exception as error:
+        jobs[job_id]["status"] = "failed"
+        jobs[job_id]["error"] = str(error)
+
 
 
 @asynccontextmanager
@@ -139,6 +207,59 @@ def ready() -> dict[str, str | bool]:
     }
 
 
+@app.post("/transcribe/async")
+async def transcribe_async(
+    background_tasks: BackgroundTasks,
+    audio: UploadFile = File(...),
+    script: str = Form(""),
+    mode: Literal["fixed", "pause"] = Form("fixed"),
+    scene_duration: float = Form(6.0),
+    pause_threshold: float = Form(0.5),
+    max_scene_duration: float = Form(0.0),
+    language: str = Form(""),
+    scene_type: str = Form("?"),
+):
+    if not audio.filename:
+        raise HTTPException(status_code=400, detail="Audio file is required.")
+
+    file_bytes = await audio.read()
+    if not file_bytes:
+        raise HTTPException(status_code=400, detail="Uploaded audio file is empty.")
+
+    max_upload_mb = float(os.getenv("MAX_UPLOAD_MB", "100"))
+    if len(file_bytes) > max_upload_mb * 1024 * 1024:
+        raise HTTPException(
+            status_code=413,
+            detail=f"Audio file exceeds {max_upload_mb}MB limit.",
+        )
+
+    job_id = str(uuid.uuid4())
+    jobs[job_id] = {"status": "processing", "result": None, "error": None}
+
+    background_tasks.add_task(
+        process_transcription_job,
+        job_id,
+        file_bytes,
+        audio.filename,
+        script,
+        mode,
+        scene_duration,
+        pause_threshold,
+        max_scene_duration,
+        language,
+        scene_type,
+    )
+
+    return {"jobId": job_id, "status": "processing"}
+
+
+@app.get("/jobs/{job_id}")
+def get_job(job_id: str):
+    if job_id not in jobs:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return jobs[job_id]
+
+
 @app.post("/transcribe", response_model=TranscriptionResponse)
 async def transcribe(
     audio: UploadFile = File(...),
@@ -173,6 +294,9 @@ async def transcribe(
         )
     except Exception as error:  # noqa: BLE001
         raise HTTPException(status_code=500, detail=f"Transcription failed: {error}") from error
+
+    if script.strip():
+        words = align_script_with_whisper(words, script, total_duration)
 
     max_duration = max_scene_duration if max_scene_duration > 0 else None
 

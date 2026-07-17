@@ -40,7 +40,7 @@ export async function POST(request: Request) {
     engineForm.append("language", String(incoming.get("language") ?? ""));
     engineForm.append("scene_type", String(incoming.get("scene_type") ?? "?"));
 
-    const response = await fetch(`${ENGINE_URL}/transcribe`, {
+    const response = await fetch(`${ENGINE_URL}/transcribe/async`, {
       method: "POST",
       body: engineForm,
       signal: engineAbort.signal,

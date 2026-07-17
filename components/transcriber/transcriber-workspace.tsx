@@ -24,6 +24,7 @@ import { EngineStatus } from "@/components/transcriber/engine-status";
 import { SystemMonitor } from "@/components/transcriber/system-monitor";
 import { ProcessingSkeleton } from "@/components/transcriber/processing-skeleton";
 import { SceneTimeline } from "@/components/transcriber/scene-timeline";
+import { WaveformEditor } from "@/components/transcriber/waveform-editor";
 import { WorkflowSteps } from "@/components/transcriber/workflow-steps";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -83,6 +84,11 @@ export function TranscriberWorkspace() {
     if (!audioFile || settings.mode !== "fixed") return null;
     return null;
   }, [audioFile, settings.mode]);
+
+  const audioUrl = useMemo(() => {
+    if (!audioFile) return null;
+    return URL.createObjectURL(audioFile);
+  }, [audioFile]);
 
   function handleStop() {
     abortRef.current?.abort();
@@ -161,16 +167,39 @@ export function TranscriberWorkspace() {
         throw new Error(payload.error ?? "Transcription failed.");
       }
 
-      const elapsedMs = processTimer.stop();
-      setProcessingElapsedMs(elapsedMs);
-      setResult(payload as TranscriberResult);
-      setActiveSceneId(1);
-      notify.update(toastId, {
-        render: `${payload.sceneCount} scenes ready for your Veo3 agent${elapsedSuffix(elapsedMs)}`,
-        type: "success",
-        autoClose: 5000,
-        isLoading: false,
-      });
+      const jobId = payload.jobId;
+
+      while (true) {
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+        if (abortController.signal.aborted) {
+            throw new DOMException("Aborted", "AbortError");
+        }
+
+        const statusRes = await fetch(`/api/transcribe/status?jobId=${jobId}`, {
+          signal: abortController.signal,
+        });
+        const statusPayload = await statusRes.json();
+
+        if (!statusRes.ok) {
+          throw new Error(statusPayload.error ?? "Status check failed.");
+        }
+
+        if (statusPayload.status === "completed") {
+          const elapsedMs = processTimer.stop();
+          setProcessingElapsedMs(elapsedMs);
+          setResult(statusPayload.result as TranscriberResult);
+          setActiveSceneId(1);
+          notify.update(toastId, {
+            render: `${statusPayload.result.sceneCount} scenes ready for your Veo3 agent${elapsedSuffix(elapsedMs)}`,
+            type: "success",
+            autoClose: 5000,
+            isLoading: false,
+          });
+          break;
+        } else if (statusPayload.status === "failed") {
+          throw new Error(statusPayload.error ?? "Transcription job failed.");
+        }
+      }
     } catch (error) {
       const elapsedMs = processTimer.stop();
       setProcessingElapsedMs(elapsedMs);
@@ -478,7 +507,15 @@ export function TranscriberWorkspace() {
             ))}
           </div>
 
-          <div className="snow-panel p-5">
+          <div className="snow-panel p-5 space-y-6">
+            {audioUrl && (
+              <WaveformEditor 
+                audioUrl={audioUrl} 
+                scenes={result.scenes} 
+                onScenesChange={(newScenes) => setResult({ ...result, scenes: newScenes })} 
+              />
+            )}
+            
             <SceneTimeline
               scenes={result.scenes}
               totalDuration={result.totalDuration}
