@@ -15,7 +15,7 @@ const features = [
   {
     icon: FileJson,
     title: "Agent-ready export",
-    description: "Scene blocks + JSON with exact counts for Veo3 prompt batches.",
+    description: "Scene blocks + JSON with exact counts for AI video prompt batches.",
   },
   {
     icon: Lock,
@@ -38,7 +38,7 @@ export default function HomePage() {
 
         <div className="relative max-w-3xl space-y-6">
           <div className="flex flex-wrap gap-2">
-            <Badge>CRAVE &amp; CONQUER toolchain</Badge>
+            <Badge>Universal AI Video Toolchain</Badge>
             <Badge variant="secondary">FoziScribe alternative</Badge>
           </div>
 
@@ -51,7 +51,7 @@ export default function HomePage() {
 
           <p className="max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg">
             Snow Transcriber turns your generated narration into timestamped scene blocks — so your
-            AI agent knows exactly how many Veo3 clips to prompt. Fixed 6-second math or natural pause
+            AI agent knows exactly how many scene prompts to generate. Fixed 6-second math or natural pause
             cuts. Free. Local. Unlimited.
           </p>
 
@@ -101,7 +101,7 @@ export default function HomePage() {
           <h2 className="text-2xl font-semibold tracking-tight">The right workflow</h2>
           <p className="mt-2 max-w-2xl text-muted-foreground">
             Most creators build scenes before the voice exists. Snow Transcriber flips that — like
-            FoziScribe, but local and tuned for your Veo3 pipeline.
+            FoziScribe, but local and tuned for your AI video pipeline.
           </p>
         </div>
         <WorkflowSteps />
@@ -124,7 +124,7 @@ export default function HomePage() {
 
       <section className="snow-panel flex flex-col items-start justify-between gap-6 p-8 sm:flex-row sm:items-center">
         <div>
-          <h2 className="text-xl font-semibold">Ready to batch your Veo3 prompts?</h2>
+          <h2 className="text-xl font-semibold">Ready to batch your AI prompts?</h2>
           <p className="mt-2 text-sm text-muted-foreground">
             Upload a voiceover, get scene timestamps, hand the JSON to your agent.
           </p>

@@ -14,7 +14,7 @@ const steps = [
   {
     icon: Sparkles,
     title: "Export for agent",
-    description: "Exact scene count as .txt blocks + JSON for Veo3 prompts.",
+    description: "Exact scene count as .txt blocks + JSON for AI prompts.",
   },
 ];
 

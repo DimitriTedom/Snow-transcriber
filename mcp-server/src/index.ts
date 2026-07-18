@@ -48,7 +48,7 @@ server.registerResource(
   "snow://workflow/guide",
   {
     title: "Snow Transcriber Agent Workflow",
-    description: "Step-by-step guide for AI agents using Snow Transcriber in a Veo3 video pipeline",
+    description: "Step-by-step guide for AI agents using Snow Transcriber in a dynamic video pipeline",
     mimeType: "text/markdown",
   },
   async () => ({
@@ -87,7 +87,7 @@ server.registerTool(
   {
     title: "Estimate Scene Count",
     description:
-      "Estimate how many fixed-duration scenes a voiceover will produce without running Whisper. Useful for planning Veo3 prompt batches.",
+      "Estimate how many fixed-duration scenes a voiceover will produce without running Whisper. Useful for planning AI prompt batches.",
     inputSchema: z
       .object({
         total_duration_seconds: z
@@ -98,7 +98,7 @@ server.registerTool(
           .number()
           .positive()
           .default(6)
-          .describe("Target clip length in seconds (default 6 for Veo3)"),
+          .describe("Target clip length in seconds (default 6)"),
       })
       .strict(),
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
@@ -122,7 +122,7 @@ server.registerTool(
   {
     title: "Transcribe Voiceover to Scenes",
     description:
-      "Transcribe a local audio file with Whisper and split into timestamped scenes. Returns sceneCount for exact Veo3 prompt planning. For long episodes, set save_json_to to persist the full result.",
+      "Transcribe a local audio file with Whisper and split into timestamped scenes. Returns sceneCount for exact AI prompt planning. For long episodes, set save_json_to to persist the full result.",
     inputSchema: z
       .object({
         audio_path: z
@@ -136,7 +136,7 @@ server.registerTool(
         mode: z
           .enum(["fixed", "pause"])
           .default("fixed")
-          .describe("fixed = every N seconds (Veo3). pause = natural voiceover pauses"),
+          .describe("fixed = every N seconds. pause = natural voiceover pauses"),
         scene_duration: z.number().positive().default(6).describe("Clip length in seconds (fixed mode)"),
         pause_threshold: z.number().positive().default(0.5).describe("Pause gap in seconds (pause mode)"),
         max_scene_duration: z
@@ -149,7 +149,7 @@ server.registerTool(
           .string()
           .max(1)
           .default("?")
-          .describe("Veo3 scene type letter placeholder (A-G or ?)"),
+          .describe("Scene type category letter placeholder (A-G or ?)"),
         save_json_to: z
           .string()
           .optional()
@@ -238,9 +238,9 @@ server.registerTool(
 server.registerTool(
   "snow_format_veo3_blocks",
   {
-    title: "Format Veo3 Scene Blocks",
+    title: "Format Scene Blocks",
     description:
-      "Format scenes into CRAVE & CONQUER style blocks: [SCENE XX] [TIMESTAMP RANGE] [TYPE]. Read from saved JSON or pass scene IDs.",
+      "Format scenes into standard style blocks: [SCENE XX] [TIMESTAMP RANGE] [TYPE]. Read from saved JSON or pass scene IDs.",
     inputSchema: z
       .object({
         json_path: z.string().min(1).describe("Absolute path to saved agentJson .json file"),
@@ -287,7 +287,7 @@ server.registerTool(
       .object({
         json_path: z.string().min(1).describe("Absolute path to agentJson or full transcription JSON"),
         output_path: z.string().min(1).describe("Absolute path for output file (.txt or .json)"),
-        format: z.enum(["txt", "json", "agent_json"]).describe("txt = Veo3 blocks, json = full result, agent_json = agent payload only"),
+        format: z.enum(["txt", "json", "agent_json"]).describe("txt = standard scene blocks, json = full result, agent_json = agent payload only"),
         scene_type: z.string().max(1).default("?").describe("Scene type letter for txt format"),
       })
       .strict(),

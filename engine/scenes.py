@@ -40,14 +40,53 @@ def words_to_text(words: list[Word]) -> str:
     return " ".join(word.text.strip() for word in words if word.text.strip()).strip()
 
 
-def align_script_with_whisper(whisper_words: list[Word], script_text: str, total_duration: float) -> list[Word]:
+def parse_script_tags(script_text: str) -> tuple[str, list[tuple[int, str, float | None]]]:
+    # Match any [SCENE] or [PACE:X] tag, including optional surrounding spaces
+    pattern = re.compile(r'\s*\[(PACE:[\d.]+s?|SCENE)\]\s*', re.IGNORECASE)
+    parts = pattern.split(script_text)
+    
+    clean_words = []
+    commands = []
+    
+    is_command = False
+    for part in parts:
+        if is_command:
+            cmd = part.upper()
+            word_idx = len(clean_words)
+            if cmd == "SCENE":
+                commands.append((word_idx, "SCENE", None))
+            elif cmd.startswith("PACE:"):
+                val_str = cmd.split(":")[1].replace("S", "")
+                try:
+                    val = float(val_str)
+                    commands.append((word_idx, "PACE", val))
+                except ValueError:
+                    pass
+            is_command = False
+        else:
+            tokens = part.split()
+            clean_words.extend(tokens)
+            is_command = True
+            
+    clean_script = " ".join(clean_words)
+    return clean_script, commands
+
+
+def align_script_with_whisper(
+    whisper_words: list[Word],
+    script_text: str,
+    total_duration: float,
+) -> tuple[list[Word], list[tuple[int, str, float | None]]]:
     """Aligns the words from the script text with the whisper words using SequenceMatcher."""
-    script_tokens = [w for w in re.split(r'(\s+)', script_text) if w.strip()]
+    clean_script_text, commands = parse_script_tags(script_text)
+    
+    script_tokens = [w for w in re.split(r'(\s+)', clean_script_text) if w.strip()]
     if not script_tokens:
-        return whisper_words
+        return whisper_words, []
     if not whisper_words:
         step = total_duration / max(1, len(script_tokens))
-        return [Word(text=tok, start=i*step, end=(i+1)*step) for i, tok in enumerate(script_tokens)]
+        aligned_words = [Word(text=tok, start=i*step, end=(i+1)*step) for i, tok in enumerate(script_tokens)]
+        return aligned_words, commands
 
     def clean(t: str) -> str:
         return re.sub(r'[^\w]', '', t).lower()
@@ -92,7 +131,121 @@ def align_script_with_whisper(whisper_words: list[Word], script_text: str, total
         aligned[i].end = round(last_end + step * 2, 3)
         last_end = aligned[i].end
 
-    return aligned
+    return aligned, commands
+
+
+def compute_scene_boundaries(
+    words: list[Word],
+    total_duration: float,
+    default_scene_duration: float,
+    commands: list[tuple[int, str, float | None]] = None,
+    hook_duration: float = 0.0,
+    hook_scene_duration: float = 0.0,
+) -> list[float]:
+    if not words:
+        return [0.0, total_duration]
+        
+    pace_events = []
+    hard_boundaries = {0.0, total_duration}
+    
+    if hook_duration > 0 and hook_scene_duration > 0:
+        pace_events.append((0.0, hook_scene_duration))
+        pace_events.append((hook_duration, default_scene_duration))
+    else:
+        pace_events.append((0.0, default_scene_duration))
+        
+    if commands:
+        for word_idx, cmd_type, val in commands:
+            if word_idx < 0 or word_idx >= len(words):
+                continue
+            t = words[word_idx].start
+            if cmd_type == "SCENE":
+                hard_boundaries.add(t)
+            elif cmd_type == "PACE":
+                pace_events.append((t, val))
+                
+    pace_events.sort(key=lambda x: x[0])
+    
+    unique_pace_events = []
+    for t, dur in pace_events:
+        if unique_pace_events and unique_pace_events[-1][0] == t:
+            unique_pace_events[-1] = (t, dur)
+        else:
+            unique_pace_events.append((t, dur))
+            
+    boundaries = [0.0]
+    cursor = 0.0
+    
+    def get_active_pacing(timestamp: float) -> float:
+        active_dur = default_scene_duration
+        for event_t, event_dur in unique_pace_events:
+            if timestamp >= event_t:
+                active_dur = event_dur
+            else:
+                break
+        return active_dur
+        
+    while cursor < total_duration:
+        pacing = get_active_pacing(cursor)
+        next_split = cursor + pacing
+        
+        earliest_hard = None
+        for hb in sorted(hard_boundaries):
+            if hb > cursor + 0.05 and hb < next_split - 0.05:
+                earliest_hard = hb
+                break
+                
+        if earliest_hard is not None:
+            cursor = earliest_hard
+        else:
+            cursor = next_split
+            
+        for event_t, _ in unique_pace_events:
+            if event_t > boundaries[-1] + 0.05 and event_t < cursor - 0.05:
+                cursor = event_t
+                break
+                
+        if cursor >= total_duration - 0.05:
+            break
+            
+        boundaries.append(round(cursor, 3))
+        
+    boundaries.append(round(total_duration, 3))
+    return sorted(list(set(boundaries)))
+
+
+def build_dynamic_scenes(
+    words: list[Word],
+    total_duration: float,
+    default_scene_duration: float,
+    commands: list[tuple[int, str, float | None]] = None,
+    hook_duration: float = 0.0,
+    hook_scene_duration: float = 0.0,
+) -> list[Scene]:
+    boundaries = compute_scene_boundaries(
+        words=words,
+        total_duration=total_duration,
+        default_scene_duration=default_scene_duration,
+        commands=commands,
+        hook_duration=hook_duration,
+        hook_scene_duration=hook_scene_duration,
+    )
+    
+    scenes: list[Scene] = []
+    for scene_id, (start, end) in enumerate(zip(boundaries[:-1], boundaries[1:]), start=1):
+        if end - start < 0.05:
+            continue
+        scene_words = collect_words_in_range(words, start, end)
+        scenes.append(
+            Scene(
+                id=scene_id,
+                start=round(start, 3),
+                end=round(end, 3),
+                text=words_to_text(scene_words),
+                word_count=len(scene_words),
+            )
+        )
+    return scenes
 
 
 def detect_pause_boundaries(

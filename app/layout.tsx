@@ -25,7 +25,7 @@ export const metadata: Metadata = {
     default: "Snow Transcriber",
     template: "%s | Snow Transcriber",
   },
-  description: "Local audio-to-timestamp scene generator for Veo3 and AI video workflows.",
+  description: "Local audio-to-timestamp scene generator for universal AI video workflows.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

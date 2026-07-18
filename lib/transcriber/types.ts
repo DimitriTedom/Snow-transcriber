@@ -46,6 +46,8 @@ export type TranscriberSettings = {
   maxSceneDuration: number;
   language: string;
   sceneType: string;
+  hookDuration?: number;
+  hookSceneDuration?: number;
 };
 
 export type ByteMetric = {

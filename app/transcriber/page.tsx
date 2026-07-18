@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 
 export const metadata = {
   title: "Workspace",
-  description: "Turn voiceover audio into timestamped scenes for Veo3 prompt generation.",
+  description: "Turn voiceover audio into timestamped scenes for AI video prompt generation.",
 };
 
 export default function TranscriberPage() {
@@ -22,9 +22,9 @@ export default function TranscriberPage() {
             </Link>
           </Button>
           <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="default">CRAVE &amp; CONQUER</Badge>
+            <Badge variant="default">Universal Tool</Badge>
             <Badge variant="secondary">Local Whisper</Badge>
-            <Badge variant="outline">Veo3 ready</Badge>
+            <Badge variant="outline">AI Video ready</Badge>
           </div>
           <h1 className="text-balance text-3xl font-semibold tracking-tight sm:text-4xl">
             Voiceover → <span className="text-primary">timestamped scenes</span>

@@ -1,6 +1,6 @@
 # Snow Transcriber
 
-Local audio-to-timestamp scene generator for CRAVE & CONQUER and other AI video workflows.
+Local audio-to-timestamp scene generator for universal AI video workflows.
 
 Upload a voiceover, get exact scene counts with timestamps, and export:
 
@@ -11,7 +11,7 @@ Powered by **Next.js** (UI) + **faster-whisper** (local transcription engine in 
 
 ## Quick start
 
-> **Windows note:** If the project path contains `&` (e.g. `CRAVE & CONQUER`), Windows cmd breaks npm `.bin` shims. This repo uses `scripts/run-next.mjs` so `npm run dev` and `npm run dev:all` work from the real path. For `npm install` issues, use a subst drive or clone to a path without `&`.
+> **Windows note:** If the project path contains `&` (e.g. in your channel directory name), Windows cmd breaks npm `.bin` shims. This repo uses `scripts/run-next.mjs` so `npm run dev` and `npm run dev:all` work from the real path. For `npm install` issues, use a subst drive or clone to a path without `&`.
 
 ### 1) Install frontend deps
 
@@ -59,7 +59,7 @@ npm run dev:all
 
 | Mode | Use case |
 |------|----------|
-| **Fixed duration** | Split every N seconds (default 6s) for Veo3 clip math |
+| **Fixed duration** | Split every N seconds (default 6s) for fixed clip lengths |
 | **Natural pauses** | Cut on voiceover pauses (FoziScribe-style rhythm) |
 
 ## Architecture

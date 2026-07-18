@@ -39,6 +39,8 @@ export async function POST(request: Request) {
     engineForm.append("max_scene_duration", String(incoming.get("max_scene_duration") ?? "0"));
     engineForm.append("language", String(incoming.get("language") ?? ""));
     engineForm.append("scene_type", String(incoming.get("scene_type") ?? "?"));
+    engineForm.append("hook_duration", String(incoming.get("hook_duration") ?? "0"));
+    engineForm.append("hook_scene_duration", String(incoming.get("hook_scene_duration") ?? "0"));
 
     const response = await fetch(`${ENGINE_URL}/transcribe/async`, {
       method: "POST",

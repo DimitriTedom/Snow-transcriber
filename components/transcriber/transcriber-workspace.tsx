@@ -154,6 +154,10 @@ export function TranscriberWorkspace() {
       formData.append("max_scene_duration", String(settings.maxSceneDuration));
       formData.append("language", settings.language);
       formData.append("scene_type", settings.sceneType);
+      if (settings.hookDuration !== undefined) {
+        formData.append("hook_duration", String(settings.hookDuration));
+        formData.append("hook_scene_duration", String(settings.hookSceneDuration ?? 2));
+      }
 
       const response = await fetch("/api/transcribe", {
         method: "POST",
@@ -190,7 +194,7 @@ export function TranscriberWorkspace() {
           setResult(statusPayload.result as TranscriberResult);
           setActiveSceneId(1);
           notify.update(toastId, {
-            render: `${statusPayload.result.sceneCount} scenes ready for your Veo3 agent${elapsedSuffix(elapsedMs)}`,
+            render: `${statusPayload.result.sceneCount} scenes ready for your AI prompt agent${elapsedSuffix(elapsedMs)}`,
             type: "success",
             autoClose: 5000,
             isLoading: false,
@@ -274,32 +278,99 @@ export function TranscriberWorkspace() {
                     {mode === "fixed" ? "Fixed" : "Pauses"}
                   </div>
                   <p className="mt-1 text-[11px] text-muted-foreground">
-                    {mode === "fixed" ? "Veo3 clip math" : "FoziScribe rhythm"}
+                    {mode === "fixed" ? "Fixed intervals" : "Natural pauses"}
                   </p>
                 </button>
               ))}
             </div>
 
             {settings.mode === "fixed" ? (
-              <div className="space-y-2">
-                <Label htmlFor="sceneDuration" className="flex items-center gap-1.5 text-xs uppercase tracking-wider text-muted-foreground">
-                  <Timer className="h-3.5 w-3.5" />
-                  Clip length (sec)
-                </Label>
-                <Input
-                  id="sceneDuration"
-                  type="number"
-                  min={1}
-                  step={0.5}
-                  value={settings.sceneDuration}
-                  onChange={(event) =>
-                    setSettings((current) => ({
-                      ...current,
-                      sceneDuration: Number(event.target.value),
-                    }))
-                  }
-                  className="font-mono"
-                />
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="sceneDuration" className="flex items-center gap-1.5 text-xs uppercase tracking-wider text-muted-foreground">
+                    <Timer className="h-3.5 w-3.5" />
+                    Clip length (sec)
+                  </Label>
+                  <Input
+                    id="sceneDuration"
+                    type="number"
+                    min={1}
+                    step={0.5}
+                    value={settings.sceneDuration}
+                    onChange={(event) =>
+                      setSettings((current) => ({
+                        ...current,
+                        sceneDuration: Number(event.target.value),
+                      }))
+                    }
+                    className="font-mono"
+                  />
+                </div>
+
+                <div className="pt-2 border-t border-white/5 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="useHookPacing" className="text-xs uppercase tracking-wider text-muted-foreground cursor-pointer">
+                      Enable Hook Pacing
+                    </Label>
+                    <input
+                      id="useHookPacing"
+                      type="checkbox"
+                      checked={settings.hookDuration !== undefined}
+                      onChange={(event) => {
+                        const enabled = event.target.checked;
+                        setSettings((current) => ({
+                          ...current,
+                          hookDuration: enabled ? 15 : undefined,
+                          hookSceneDuration: enabled ? 2 : undefined,
+                        }));
+                      }}
+                      className="h-4 w-4 rounded border-white/10 bg-secondary/40 text-primary focus:ring-primary cursor-pointer"
+                    />
+                  </div>
+
+                  {settings.hookDuration !== undefined && (
+                    <div className="grid grid-cols-2 gap-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                      <div className="space-y-1.5">
+                        <Label htmlFor="hookDuration" className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                          Hook Limit (s)
+                        </Label>
+                        <Input
+                          id="hookDuration"
+                          type="number"
+                          min={1}
+                          step={1}
+                          value={settings.hookDuration}
+                          onChange={(event) =>
+                            setSettings((current) => ({
+                              ...current,
+                              hookDuration: Number(event.target.value),
+                            }))
+                          }
+                          className="font-mono text-xs h-8"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="hookSceneDuration" className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                          Pacing (s)
+                        </Label>
+                        <Input
+                          id="hookSceneDuration"
+                          type="number"
+                          min={0.5}
+                          step={0.5}
+                          value={settings.hookSceneDuration ?? 2}
+                          onChange={(event) =>
+                            setSettings((current) => ({
+                              ...current,
+                              hookSceneDuration: Number(event.target.value),
+                            }))
+                          }
+                          className="font-mono text-xs h-8"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             ) : (
               <>
@@ -361,7 +432,7 @@ export function TranscriberWorkspace() {
             </div>
 
             <div className="space-y-2">
-              <Label className="text-xs uppercase tracking-wider text-muted-foreground">Veo3 scene type</Label>
+              <Label className="text-xs uppercase tracking-wider text-muted-foreground">Scene category</Label>
               <div className="flex flex-wrap gap-1.5">
                 {sceneTypes.map((type) => (
                   <button
@@ -413,7 +484,7 @@ export function TranscriberWorkspace() {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-muted-foreground">
               {settings.mode === "fixed"
-                ? `Each scene ≈ ${settings.sceneDuration}s — ideal for Veo3 prompt batching.`
+                ? `Each scene ≈ ${settings.sceneDuration}s — ideal for AI prompt batching.`
                 : "Cuts land on natural pauses in the voiceover."}
               {estimatedScenes ? ` · ~${estimatedScenes} scenes est.` : null}
             </p>
@@ -527,9 +598,9 @@ export function TranscriberWorkspace() {
           <div className="snow-panel overflow-hidden">
             <div className="flex flex-col gap-4 border-b border-white/10 p-5 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h2 className="text-sm font-semibold">Export for CRAVE &amp; CONQUER</h2>
+                <h2 className="text-sm font-semibold">Export for AI Video Prompting</h2>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Feed .txt or JSON into your Veo3 prompt agent — exact scene count included.
+                  Feed .txt or JSON into your AI prompt agent — exact scene count included.
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">

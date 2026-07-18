@@ -33,7 +33,7 @@ export default function McpSetupPage() {
         </h1>
         <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
           Step-by-step configs for each client. Paste your repo path, copy the generated block, and
-          your agent can transcribe voiceovers and export Veo3 scene blocks without the web UI.
+          your agent can transcribe voiceovers and export dynamic scene blocks without the web UI.
         </p>
       </div>
 

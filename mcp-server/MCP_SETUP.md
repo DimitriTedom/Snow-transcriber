@@ -37,7 +37,7 @@ Connect **Grok, Antigravity, VS Code, Cursor, Claude Desktop, Gemini CLI**, and 
 | `snow_format_veo3_blocks` | Export `[SCENE XX] [TIMESTAMP] [TYPE]` blocks |
 | `snow_save_export` | Save `.txt` or `.json` to disk |
 
-**Resource:** `snow://workflow/guide` — agent workflow for Veo3 pipelines.
+**Resource:** `snow://workflow/guide` — agent workflow for AI video pipelines.
 
 ---
 
@@ -160,7 +160,7 @@ Restart Claude Desktop after saving.
 4. snow_format_veo3_blocks({
      json_path: "D:/episodes/ep01-scenes.json",
      scene_type: "?",
-     save_to: "D:/episodes/ep01-veo3-blocks.txt"
+     save_to: "D:/episodes/ep01-scene-blocks.txt"
    })
 ```
 

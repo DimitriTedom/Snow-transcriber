@@ -1,6 +1,6 @@
 # Snow Transcriber MCP Server
 
-MCP server so **Cursor, Antigravity, Claude Desktop, Grok**, and any MCP-compatible agent can transcribe voiceovers and get exact Veo3 scene counts.
+MCP server so **Cursor, Antigravity, Claude Desktop, Grok**, and any MCP-compatible agent can transcribe voiceovers and get exact scene counts.
 
 Uses **stdio** transport (local process) → talks to the Whisper engine at `http://localhost:8000`.
 
@@ -30,7 +30,7 @@ Uses **stdio** transport (local process) → talks to the Whisper engine at `htt
 
 ## Resource
 
-- `snow://workflow/guide` — Agent workflow markdown for Veo3 pipelines
+- `snow://workflow/guide` — Agent workflow markdown for AI video pipelines
 
 ## Configure your agent
 
@@ -63,7 +63,7 @@ Template configs live in `mcp-server/config/`.
 4. snow_format_veo3_blocks({
      json_path: "D:/episodes/ep01-scenes.json",
      scene_type: "?",
-     save_to: "D:/episodes/ep01-veo3-blocks.txt"
+     save_to: "D:/episodes/ep01-scene-blocks.txt"
    })
 ```
 

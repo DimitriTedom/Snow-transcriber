@@ -9,7 +9,7 @@ from fastapi import BackgroundTasks, FastAPI, File, Form, HTTPException, UploadF
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from scenes import Scene, align_script_with_whisper, build_fixed_scenes, build_pause_scenes, format_timestamp_range
+from scenes import Scene, align_script_with_whisper, build_fixed_scenes, build_pause_scenes, format_timestamp_range, build_dynamic_scenes
 from system import get_system_stats
 from transcribe import get_transcription_service, is_model_ready, transcribe_upload
 import uuid
@@ -17,7 +17,20 @@ import uuid
 # In-memory dictionary to store active jobs
 jobs = {}
 
-def process_transcription_job(job_id: str, file_bytes: bytes, file_name: str, script: str, mode: str, scene_duration: float, pause_threshold: float, max_scene_duration: float, language: str, scene_type: str):
+def process_transcription_job(
+    job_id: str,
+    file_bytes: bytes,
+    file_name: str,
+    script: str,
+    mode: str,
+    scene_duration: float,
+    pause_threshold: float,
+    max_scene_duration: float,
+    language: str,
+    scene_type: str,
+    hook_duration: float = 0.0,
+    hook_scene_duration: float = 0.0,
+):
     try:
         words, total_duration, detected_language = transcribe_upload(
             file_name,
@@ -25,8 +38,9 @@ def process_transcription_job(job_id: str, file_bytes: bytes, file_name: str, sc
             language or None,
         )
 
+        commands = []
         if script.strip():
-            words = align_script_with_whisper(words, script, total_duration)
+            words, commands = align_script_with_whisper(words, script, total_duration)
 
         max_duration = max_scene_duration if max_scene_duration > 0 else None
 
@@ -40,10 +54,13 @@ def process_transcription_job(job_id: str, file_bytes: bytes, file_name: str, sc
             effective_scene_duration = None
             effective_pause_threshold = pause_threshold
         else:
-            scenes = build_fixed_scenes(
+            scenes = build_dynamic_scenes(
                 words=words,
                 total_duration=total_duration,
-                scene_duration=scene_duration,
+                default_scene_duration=scene_duration,
+                commands=commands,
+                hook_duration=hook_duration,
+                hook_scene_duration=hook_scene_duration,
             )
             effective_scene_duration = scene_duration
             effective_pause_threshold = None
@@ -218,6 +235,8 @@ async def transcribe_async(
     max_scene_duration: float = Form(0.0),
     language: str = Form(""),
     scene_type: str = Form("?"),
+    hook_duration: float = Form(0.0),
+    hook_scene_duration: float = Form(0.0),
 ):
     if not audio.filename:
         raise HTTPException(status_code=400, detail="Audio file is required.")
@@ -248,6 +267,8 @@ async def transcribe_async(
         max_scene_duration,
         language,
         scene_type,
+        hook_duration,
+        hook_scene_duration,
     )
 
     return {"jobId": job_id, "status": "processing"}
